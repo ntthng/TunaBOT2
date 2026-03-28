@@ -1,0 +1,94 @@
+{
+  "1316135921581821953": {
+    "level": 3,
+    "xp": 4,
+    "grindCount": 9,
+    "dailyGrind": 7,
+    "lastGrindDate": "3/28/2026",
+    "inventory": {
+      "Classic_Default": {
+        "name": "Classic",
+        "rank": "Default",
+        "amount": 1
+      },
+      "Bucky_Default": {
+        "name": "Bucky",
+        "rank": "Default",
+        "amount": 1
+      },
+      "Phantom_Default": {
+        "name": "Phantom",
+        "rank": "Default",
+        "amount": 1
+      },
+      "GlitchpopAxeMelee_Exclusive": {
+        "name": "GlitchpopAxeMelee",
+        "rank": "Exclusive",
+        "amount": 1
+      },
+      "Ares_Default": {
+        "name": "Ares",
+        "rank": "Default",
+        "amount": 1
+      },
+      "Ghost_Default": {
+        "name": "Ghost",
+        "rank": "Default",
+        "amount": 1
+      },
+      "SingularityAres_Exclusive": {
+        "name": "SingularityAres",
+        "rank": "Exclusive",
+        "amount": 1
+      },
+      "Judge_Default": {
+        "name": "Judge",
+        "rank": "Default",
+        "amount": 1
+      },
+      "Vandal_Default": {
+        "name": "Vandal",
+        "rank": "Default",
+        "amount": 1
+      }
+    },
+    "skills": {
+      "run": 5,
+      "slide": 1,
+      "drift": 1
+    },
+    "lastRarity": "Default",
+    "streak": 1
+  },
+  "1333091852181700681": {
+    "level": 2,
+    "xp": 2,
+    "grindCount": 3,
+    "dailyGrind": 3,
+    "lastGrindDate": "3/28/2026",
+    "inventory": {
+      "UndercityHackMelee_Premium": {
+        "name": "UndercityHackMelee",
+        "rank": "Premium",
+        "amount": 1
+      },
+      "Stinger_Default": {
+        "name": "Stinger",
+        "rank": "Default",
+        "amount": 1
+      },
+      "SoulstrifeScytheMelee_Premium": {
+        "name": "SoulstrifeScytheMelee",
+        "rank": "Premium",
+        "amount": 1
+      }
+    },
+    "skills": {
+      "run": 5,
+      "slide": 3,
+      "drift": 0
+    },
+    "lastRarity": "Premium",
+    "streak": 1
+  }
+}
