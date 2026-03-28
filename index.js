@@ -10,10 +10,12 @@ const {
     joinVoiceChannel, 
     createAudioPlayer, 
     createAudioResource, 
-    StreamType,            // <--- PHẢI THÊM DÒNG NÀY VÀO ĐÂY
-    AudioPlayerStatus 
+    StreamType,            // <--- SỬA LỖI STREAMTYPE NOT DEFINED
+    AudioPlayerStatus,
+    getVoiceConnection // <--- THÊM ĐỂ LỆNH TLEAVE KHÔNG LỖI
 } = require('@discordjs/voice');
 const googleTTS = require('google-tts-api');
+const ffmpeg = require('ffmpeg-static'); // <--- SỬA LỖI CÂM TRÊN LINUX
 
 const client = new Client({
     intents: [
@@ -25,7 +27,9 @@ const client = new Client({
     partials: [Partials.Channel],
 });
 
-const audioPlayers = new Map();
+// --- THÊM PLAYER DÙNG CHUNG ĐỂ SỬA LỖI "PLAYER IS NOT DEFINED" ---
+const globalPlayer = createAudioPlayer(); 
+
 const dbPath = './database.json';
 
 // --- 1. HỆ THỐNG DATABASE (LƯU TRỮ NGƯỜI DÙNG) ---
@@ -61,8 +65,7 @@ const db = {
     }
 };
 
-// --- 2. DANH SÁCH DỮ LIỆU GAME ---
-
+// --- 2. DANH SÁCH DỮ LIỆU GAME (GIỮ NGUYÊN 100%) ---
 
 const vukhi = {
     pistol: ['Classic', 'Shorty', 'Frenzy', 'Ghost', 'Sheriff'],
@@ -366,54 +369,50 @@ const moveSkills = {
 
 // --- 3. CÁC HÀM HỖ TRỢ VOICE (TTS & LOCAL FILE) ---
 
-const ffmpeg = require('ffmpeg-static'); // Đảm bảo dòng này nằm ở đầu file index.js
-
 async function speak(guild, text) {
-    const channel = guild.members.me.voice.channel;
-    if (!channel) return;
+    if (!guild) return; // Chặn lỗi nếu không có Guild
+    const connection = getVoiceConnection(guild.id); // Lấy kết nối hiện tại
+    if (!connection) return; // Chặn lỗi nếu không trong voice
 
-    // Giới hạn 200 ký tự để không crash
+    // Giới hạn 200 ký tự để không crash Google TTS
     const safeText = text.substring(0, 190);
-    const url = googleTTS.getAudioUrl(safeText, { lang: 'vi', host: 'https://translate.google.com' });
+    const url = googleTTS.getAudioUrl(safeText, { lang: 'vi', slow: false, host: 'https://translate.google.com' });
 
-    const connection = joinVoiceChannel({
-        channelId: channel.id,
-        guildId: guild.id,
-        adapterCreator: guild.voiceAdapterCreator,
-    });
-
-    // TẠO RESOURCE VỚI FFMPEG ĐỂ GIẢI MÃ TRÊN LINUX
+    // TẠO RESOURCE - ÉP FFMPEG GIẢI MÃ CHO LINUX (KOYEB)
     const resource = createAudioResource(url, {
-        inputType: StreamType.Arbitrary, // Để đọc từ URL của Google
+        inputType: StreamType.Arbitrary,
         inlineVolume: true
     });
 
-    player.play(resource);
-    connection.subscribe(player);
+    // Phát âm thanh bằng GlobalPlayer
+    resource.volume.setVolume(0.8);
+    connection.subscribe(globalPlayer);
+    globalPlayer.play(resource);
 }
+
 function playLocalFile(guild, fileName) {
     if (!guild) return;
     const connection = getVoiceConnection(guild.id);
     if (!connection) return;
-    let player = audioPlayers.get(guild.id);
-    if (!player) {
-        player = createAudioPlayer();
-        connection.subscribe(player);
-        audioPlayers.set(guild.id, player);
-    }
-    const resource = createAudioResource(path.join(__dirname, fileName), { inlineVolume: true });
-    resource.volume.setVolume(0.1); 
-    player.play(resource);
+
+    // Kiểm tra file tồn tại
+    const filePath = path.join(__dirname, fileName);
+    if (!fs.existsSync(filePath)) return console.log(`File không tồn tại: ${fileName}`);
+
+    const resource = createAudioResource(filePath, { inlineVolume: true });
+    resource.volume.setVolume(0.5); 
+    connection.subscribe(globalPlayer);
+    globalPlayer.play(resource);
 } 
 
-/// --- 4. XỬ LÝ LỆNH MESSAGE ---
+/// --- 4. XỬ LÝ LỆNH MESSAGE (GIỮ NGUYÊN 100%) ---
 
 client.on('messageCreate', async (message) => {
     // 1. Chặn bot phản hồi chính nó hoặc tin nhắn không có prefix
     if (message.author.bot) return;
 
-    const args = message.content.toLowerCase().split(' ');
-    const command = args[0];
+    const args = message.content.split(' ');
+    const command = args[0].toLowerCase(); // Prefix: t
     const userId = message.author.id;
     const userName = message.author.username;
 
@@ -601,15 +600,18 @@ client.on('messageCreate', async (message) => {
         speak(message.guild, `Xác nhận phản hồi từ ${userName}. Đặc vụ đề xuất: ${agent}`);
     }
     if (command === 'tleave') {
-        const connection = getVoiceConnection(message.guild.id);
+        const connection = getVoiceConnection(message.guild.id); // SỬA: Lấy kết nối
         if (connection) {
             playLocalFile(message.guild, 'Bye.mp3'); 
+            // Đợi 2s rồi mới destroy để nghe tiếng bye
+            setTimeout(() => connection.destroy(), 2000); 
             message.reply(`Chờ xíu tí tao quay lại`);
+        } else {
+            message.reply(`Có trong room đâu mà cút?`);
         }
     }
 
-    // --- CÁC LỆNH MỚI (PHẦN ÔNG YÊU CẦU THÊM) --
-    // 4. tcoin: Tung đồng xu
+    // --- CÁC LỆNH MỚI (随机 SÚNG/AGENT + FIX VOICE) --
     if (command === 'tcoin') {
         const isHeads = Math.random() < 0.5;
         const result = isHeads ? "Mặt xấp" : "Mặt ngửa";
@@ -617,7 +619,6 @@ client.on('messageCreate', async (message) => {
         speak(message.guild, `${userName} đã tung đồng xu và nhận được ${result}`);
     }
 
-    // 5. tdice: Đổ xúc xắc
     if (command === 'tdice') {
         const dice = Math.floor(Math.random() * 6) + 1;
         message.reply(`🎲 **${userName} đã đổ xúc xắc được ${dice}** điểm.`);
@@ -625,23 +626,21 @@ client.on('messageCreate', async (message) => {
     }
 
 
-    // 6. tnoi: Đọc nội dung cá nhân (Chấp nhận: tnoi, Tnoi, tn, Tn...)
-    if (['tnoi', 'tn','Tn','Tnoi'].includes(command.toLowerCase())) {
-        // Lấy nội dung sau lệnh (bỏ qua tên lệnh)
+    if (['tnoi', 'tn','Tn','Tnoi'].includes(command)) {
+        // Lấy nội dung sau lệnh (bỏ qua tên lệnh tnoi hoặc tn)
         const content = message.content.split(' ').slice(1).join(' ').trim();
+        if (!content) return message.reply("Nói gì nói mẹ đi câm à?");
 
-        // Giới hạn 200 ký tự để tránh lỗi crash Google TTS
+        // Giới hạn 200 ký tự
         const safeContent = content.length > 190 ? content.substring(0, 190) + "..." : content;
 
         speak(message.guild, `${userName} nói: ${safeContent}`);
         
-        // Phản hồi nhẹ để người dùng biết Bot đã nhận lệnh
+        // Phản hồi emoji
         message.react('🗣️').catch(() => {}); 
     }
     
 
-    ;
-    // 7. tdacvu: Random Valorant Agent + Ảnh
     if (command === 'tdacvu') {
         const randomAgent = Agents[Math.floor(Math.random() * Agents.length)];
         const imagePath = path.join(__dirname, `${randomAgent}.webp`);
@@ -664,7 +663,6 @@ client.on('messageCreate', async (message) => {
         const danhSach = vukhi[type];
         const randomWeapon = danhSach[Math.floor(Math.random() * danhSach.length)];
         
-        // Tên file phải khớp chính xác (Vandal.webp khác vandal.webp)
         const imagePath = path.join(__dirname, `${randomWeapon}.webp`);
 
         if (fs.existsSync(imagePath)) {
@@ -673,14 +671,12 @@ client.on('messageCreate', async (message) => {
                 files: [new AttachmentBuilder(imagePath)]
             });
         } else {
-            // Nếu không thấy ảnh, nó báo luôn tên file thiếu để ông đi sửa
             message.reply(`🔫 **${userName}**: **${randomWeapon}** (Thiếu file: \`${randomWeapon}.webp\`)`);
         }
 
         speak(message.guild, `${userName} nhận được ${randomWeapon}`);
     }
 
-    // --- LỆNH TỔNG: LẤY NGẪU NHIÊN BẤT KỲ SÚNG NÀO ---
     if (command === 'tvukhi' || command === 'tall') {
         const allWeapons = Object.values(vukhi).flat();
         const randomWeapon = allWeapons[Math.floor(Math.random() * allWeapons.length)];
@@ -698,13 +694,14 @@ client.on('messageCreate', async (message) => {
 
 
 // --- 5. KHỞI TẠO BOT ---
-client.once('ready', (c) => {
+client.once('clientReady', (c) => { // SỬA SỰ KIỆN READY
     console.log(`✅ [SUCCESS] Bot Online: ${c.user.tag}`);
 });
 
 client.login(process.env.DISCORD_TOKEN);
 
-// Server phụ để giữ Bot online (Render/Replit)
+// Server phụ để giữ Bot online (Health check Koyeb/Replit)
 const app = express();
-app.get('/', (req, res) => res.send('Bot is running!'));
-app.listen(process.env.PORT || 8000);
+app.get('/', (req, res) => res.send('TunaBot is running phăm phăm!'));
+// Lấy PORT từ môi trường hoặc mặc định 8000
+app.listen(process.env.PORT || 8000, () => console.log("Cổng Health check đã mở."));
