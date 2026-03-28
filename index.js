@@ -333,6 +333,12 @@ const ValGun = {
 ]
 };
 
+const Agents = [
+    'Brimstone', 'Viper', 'Omen', 'Killjoy', 'Cypher', 'Sova', 'Sage', 'Phoenix', 'Jett', 'Reyna', 
+    'Raze', 'Skye', 'Yoru', 'Astra', 'KAY/O', 'Chamber', 'Neon', 'Fade', 'Harbor', 'Gekko', 
+    'Deadlock', 'Iso', 'Clove', 'Vyse'
+]
+
 // Tỷ lệ rơi gốc (Raw Data)
 const rawDropRates = [
     { rank: ValCollect.Trash, chance: 18, catchBase: 0, color: '#000000' },
@@ -357,22 +363,31 @@ const moveSkills = {
 
 // --- 3. CÁC HÀM HỖ TRỢ VOICE (TTS & LOCAL FILE) ---
 
-function speak(guild, text) {
-    if (!guild) return;
-    const connection = getVoiceConnection(guild.id);
-    if (!connection) return;
-    let player = audioPlayers.get(guild.id);
-    if (!player) {
-        player = createAudioPlayer();
-        connection.subscribe(player);
-        audioPlayers.set(guild.id, player);
-    }
-    const url = googleTTS.getAudioUrl(text, { lang: 'vi', host: 'https://translate.google.com' });
-    const resource = createAudioResource(url, { inlineVolume: true });
-    resource.volume.setVolume(2); 
-    player.play(resource);
-}
+const ffmpeg = require('ffmpeg-static'); // Đảm bảo dòng này nằm ở đầu file index.js
 
+async function speak(guild, text) {
+    const channel = guild.members.me.voice.channel;
+    if (!channel) return;
+
+    // Giới hạn 200 ký tự để không crash
+    const safeText = text.substring(0, 190);
+    const url = googleTTS.getAudioUrl(safeText, { lang: 'vi', host: 'https://translate.google.com' });
+
+    const connection = joinVoiceChannel({
+        channelId: channel.id,
+        guildId: guild.id,
+        adapterCreator: guild.voiceAdapterCreator,
+    });
+
+    // TẠO RESOURCE VỚI FFMPEG ĐỂ GIẢI MÃ TRÊN LINUX
+    const resource = createAudioResource(url, {
+        inputType: StreamType.Arbitrary, // Để đọc từ URL của Google
+        inlineVolume: true
+    });
+
+    player.play(resource);
+    connection.subscribe(player);
+}
 function playLocalFile(guild, fileName) {
     if (!guild) return;
     const connection = getVoiceConnection(guild.id);
@@ -622,17 +637,7 @@ client.on('messageCreate', async (message) => {
     }
     
 
-
-
-
-
-
-
-    const Agents = [
-    'Brimstone', 'Viper', 'Omen', 'Killjoy', 'Cypher', 'Sova', 'Sage', 'Phoenix', 'Jett', 'Reyna', 
-    'Raze', 'Skye', 'Yoru', 'Astra', 'KAY/O', 'Chamber', 'Neon', 'Fade', 'Harbor', 'Gekko', 
-    'Deadlock', 'Iso', 'Clove', 'Vyse'
-];
+    ;
     // 7. tdacvu: Random Valorant Agent + Ảnh
     if (command === 'tdacvu') {
         const randomAgent = Agents[Math.floor(Math.random() * Agents.length)];
