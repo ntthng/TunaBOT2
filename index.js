@@ -7,8 +7,11 @@ const {
     ButtonBuilder, ButtonStyle, ComponentType, EmbedBuilder, AttachmentBuilder 
 } = require('discord.js');
 const { 
-    joinVoiceChannel, createAudioPlayer, createAudioResource, 
-    AudioPlayerStatus, getVoiceConnection 
+    joinVoiceChannel, 
+    createAudioPlayer, 
+    createAudioResource, 
+    StreamType,            // <--- PHẢI THÊM DÒNG NÀY VÀO ĐÂY
+    AudioPlayerStatus 
 } = require('@discordjs/voice');
 const googleTTS = require('google-tts-api');
 
