@@ -14,6 +14,12 @@ const {
     AudioPlayerStatus,
     getVoiceConnection // <--- THÊM ĐỂ LỆNH TLEAVE KHÔNG LỖI
 } = require('@discordjs/voice');
+
+// --- DÒNG QUAN TRỌNG NHẤT ĐỂ FIX LỖI CÂM TRÊN KOYEB ---
+const prism = require('prism-media');
+// Đoạn này ép Bot dùng ffmpeg-static mà ông đã cài
+process.env.FFMPEG_PATH = ffmpeg;
+
 const googleTTS = require('google-tts-api');
 const ffmpeg = require('ffmpeg-static'); // <--- SỬA LỖI CÂM TRÊN LINUX
 
@@ -701,11 +707,7 @@ client.once('clientReady', (c) => { // SỬA SỰ KIỆN READY
 client.login(process.env.DISCORD_TOKEN);
 
 // Server phụ để giữ Bot online (Health check Koyeb/Replit)
-// Thay vì chỉ ghi 8000, hãy dùng biến môi trường PORT
 const app = express();
-app.get('/', (req, res) => res.send('Bot is Live!'));
-
-const port = process.env.PORT || 8000; // Koyeb sẽ tự nạp cổng vào đây
-app.listen(port, "0.0.0.0", () => {
-    console.log(`✅ Health check đang chạy trên cổng: ${port}`);
-});
+app.get('/', (req, res) => res.send('TunaBot is running phăm phăm!'));
+// Lấy PORT từ môi trường hoặc mặc định 8000
+app.listen(process.env.PORT || 8000, () => console.log("Cổng Health check đã mở."));
