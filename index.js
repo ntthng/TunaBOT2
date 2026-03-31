@@ -14,6 +14,7 @@ const {
     AudioPlayerStatus,
     getVoiceConnection // <--- THÊM ĐỂ LỆNH TLEAVE KHÔNG LỖI
 } = require('@discordjs/voice');
+const ffmpeg = require('ffmpeg-static'); // <--- SỬA LỖI CÂM TRÊN LINUX
 
 // --- DÒNG QUAN TRỌNG NHẤT ĐỂ FIX LỖI CÂM TRÊN KOYEB ---
 const prism = require('prism-media');
@@ -21,7 +22,6 @@ const prism = require('prism-media');
 process.env.FFMPEG_PATH = ffmpeg;
 
 const googleTTS = require('google-tts-api');
-const ffmpeg = require('ffmpeg-static'); // <--- SỬA LỖI CÂM TRÊN LINUX
 
 const client = new Client({
     intents: [
