@@ -376,24 +376,25 @@ const moveSkills = {
 // --- 3. CÁC HÀM HỖ TRỢ VOICE (TTS & LOCAL FILE) ---
 
 async function speak(guild, text) {
-    if (!guild) return; // Chặn lỗi nếu không có Guild
-    const connection = getVoiceConnection(guild.id); // Lấy kết nối hiện tại
-    if (!connection) return; // Chặn lỗi nếu không trong voice
+    if (!guild) return;
+    const connection = getVoiceConnection(guild.id);
+    if (!connection) return;
 
-    // Giới hạn 200 ký tự để không crash Google TTS
     const safeText = text.substring(0, 190);
     const url = googleTTS.getAudioUrl(safeText, { lang: 'vi', slow: false, host: 'https://translate.google.com' });
 
-    // TẠO RESOURCE - ÉP FFMPEG GIẢI MÃ CHO LINUX (KOYEB)
+    // Dùng prism-media để ép luồng âm thanh chạy qua FFmpeg một cách rõ ràng
     const resource = createAudioResource(url, {
         inputType: StreamType.Arbitrary,
         inlineVolume: true
     });
 
-    // Phát âm thanh bằng GlobalPlayer
-    resource.volume.setVolume(0.8);
-    connection.subscribe(globalPlayer);
+    resource.volume.setVolume(0.9);
+    
+    // MẸO: Dừng cái cũ để cái mới bắt đầu ngay lập tức
+    globalPlayer.stop(); 
     globalPlayer.play(resource);
+    connection.subscribe(globalPlayer);
 }
 
 function playLocalFile(guild, fileName) {
