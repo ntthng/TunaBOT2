@@ -2,35 +2,31 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
-const sodium = require('libsodium-wrappers');
 
-// Đảm bảo sodium sẵn sàng trước khi Bot làm bất cứ việc gì liên quan đến Voice
-async function initializeVoice() {
-    await sodium.ready;
-    console.log("✅ Sodium (Mã hóa) đã sẵn sàng trên Koyeb!");
-}
-initializeVoice();
+// 1. Thiết lập FFmpeg ngay lập tức để hệ thống nhận diện
+const ffmpeg = require('ffmpeg-static');
+process.env.FFMPEG_PATH = ffmpeg;
+
+// 2. Khai báo các thư viện Discord và Voice (Phải sau khi set FFMPEG_PATH)
 const { 
     Client, GatewayIntentBits, Partials, ActionRowBuilder, 
     ButtonBuilder, ButtonStyle, ComponentType, EmbedBuilder, AttachmentBuilder 
 } = require('discord.js');
+
 const { 
     joinVoiceChannel, 
     createAudioPlayer, 
     createAudioResource, 
-    StreamType,            // <--- SỬA LỖI STREAMTYPE NOT DEFINED
+    StreamType,
     AudioPlayerStatus,
-    getVoiceConnection // <--- THÊM ĐỂ LỆNH TLEAVE KHÔNG LỖI
+    getVoiceConnection 
 } = require('@discordjs/voice');
-const ffmpeg = require('ffmpeg-static'); // <--- SỬA LỖI CÂM TRÊN LINUX
 
-// --- DÒNG QUAN TRỌNG NHẤT ĐỂ FIX LỖI CÂM TRÊN KOYEB ---
 const prism = require('prism-media');
-// Đoạn này ép Bot dùng ffmpeg-static mà ông đã cài
-process.env.FFMPEG_PATH = ffmpeg;
-
 const googleTTS = require('google-tts-api');
+const sodium = require('libsodium-wrappers');
 
+// 3. Khởi tạo Client và Player dùng chung
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -41,10 +37,26 @@ const client = new Client({
     partials: [Partials.Channel],
 });
 
-// --- THÊM PLAYER DÙNG CHUNG ĐỂ SỬA LỖI "PLAYER IS NOT DEFINED" ---
 const globalPlayer = createAudioPlayer(); 
-
 const dbPath = './database.json';
+
+// 4. Hàm khởi tạo hệ thống (Đợi mã hóa Sodium sẵn sàng cho Linux/Koyeb)
+async function startBot() {
+    try {
+        await sodium.ready;
+        console.log("✅ Hệ thống mã hóa (Sodium) đã sẵn sàng trên Koyeb!");
+        
+        // Đăng nhập Bot ở đây để đảm bảo mọi thứ đã nạp xong
+        await client.login(process.env.TOKEN);
+    } catch (err) {
+        console.error("❌ Lỗi khởi tạo Bot:", err);
+    }
+}
+
+// 5. Chạy hàm khởi tạo
+startBot();
+
+// --- CÁC CODE XỬ LÝ SỰ KIỆN (client.on, speak...) ĐỂ PHÍA DƯỚI NÀY ---
 
 // --- 1. HỆ THỐNG DATABASE (LƯU TRỮ NGƯỜI DÙNG) ---
 const db = {
@@ -395,21 +407,21 @@ async function speak(guild, text) {
     });
 
     const resource = createAudioResource(url, {
-        // Trên Linux, Arbitrary đôi khi kén FFmpeg, hãy thử ép kiểu hoặc dùng inlineVolume
         inputType: StreamType.Arbitrary,
-        inlineVolume: true 
+        inlineVolume: true // Giúp kiểm soát luồng âm thanh tốt hơn trên Linux
     });
 
     try {
         resource.volume.setVolume(0.8);
         
-        // Quan trọng: Phải stop player trước khi play cái mới trên Linux để tránh treo luồng
+        // Luôn stop player trước khi phát cái mới để giải phóng buffer
         globalPlayer.stop(); 
         globalPlayer.play(resource);
         connection.subscribe(globalPlayer);
-        console.log(`🎤 Đang phát: ${text}`);
+        
+        console.log(`🎤 Chị Google đang nói: ${text}`);
     } catch (error) {
-        console.error("Lỗi âm thanh:", error);
+        console.error("Lỗi phát âm thanh:", error);
     }
 }
 
