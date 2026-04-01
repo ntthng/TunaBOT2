@@ -4,6 +4,21 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, NoSubscriberBehavior, StreamType, getVoiceConnection } = require('@discordjs/voice');
 const googleTTS = require('google-tts-api');
 
+const ffmpeg = require('ffmpeg-static');
+const { createAudioResource, StreamType } = require('@discordjs/voice');
+
+// ÉP BOT DÙNG ĐƯỜNG DẪN NÀY (Đây là chìa khóa!)
+process.env.FFMPEG_PATH = ffmpeg; 
+
+function speak(guild, text) {
+    // ... code cũ ...
+    const resource = createAudioResource(url, {
+        inputType: StreamType.Arbitrary, // Thằng này sẽ tự gọi FFMPEG_PATH ở trên
+        inlineVolume: true
+    });
+    // ...
+}
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
