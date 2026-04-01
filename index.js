@@ -112,13 +112,20 @@ async function speak(guild, text) {
             host: 'https://translate.google.com' 
         });
 
-        const resource = createAudioResource(url, {
-            inputType: StreamType.Arbitrary,
-            inlineVolume: true,
-            behaviors: {
-                noPlayerFreezing: true 
-            }
-        });
+        // Thay đoạn trong hàm speak:
+const resource = createAudioResource(url, {
+    inputType: StreamType.Arbitrary,
+    inlineVolume: true,
+});
+
+if (resource.volume) resource.volume.setVolume(0.9); // Đẩy volume cao lên xíu
+
+// Quan trọng: Thêm cái này ngay sau khi play
+connection.subscribe(globalPlayer);
+globalPlayer.play(resource);
+
+// Ép bot "thở" để giữ kết nối voice trên Linux
+const { AudioPlayerStatus } = require('@discordjs/voice');
 
         if (resource.volume) resource.volume.setVolume(0.8);
 
