@@ -4,13 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@discordjs/opus": "^0.10.0",
     "@discordjs/voice": "^0.19.2",
     "axios": "^1.13.6",
     "discord.js": "^14.25.1",
@@ -22,5 +22,13 @@
     "node-fetch": "^2.7.0",
     "opusscript": "^0.0.8",
     "prism-media": "^1.3.5"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ntthng/TunaBOT2.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ntthng/TunaBOT2/issues"
+  },
+  "homepage": "https://github.com/ntthng/TunaBOT2#readme"
 }
