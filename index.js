@@ -57,6 +57,30 @@ const db = {
         return data[userId];
     }
 };
+// --- KHỞI TẠO PLAYER CHUẨN CHO RAILWAY ---
+const { NoSubscriberBehavior, StreamType } = require('@discordjs/voice');
+const globalPlayer = createAudioPlayer({
+    behaviors: { noSubscriber: NoSubscriberBehavior.Play }
+});
+
+// Hàm phát file MP3 có sẵn (Hi.mp3, Bye.mp3...)
+function playLocalFile(guild, fileName) {
+    const connection = getVoiceConnection(guild.id);
+    if (!connection) return;
+    const resource = createAudioResource(path.join(__dirname, fileName));
+    connection.subscribe(globalPlayer);
+    globalPlayer.play(resource);
+}
+
+// Hàm nói chuyện Google TTS
+function speak(guild, text) {
+    const connection = getVoiceConnection(guild.id);
+    if (!connection) return;
+    const url = googleTTS.getAudioUrl(text, { lang: 'vi', slow: false, host: 'https://translate.google.com' });
+    const resource = createAudioResource(url, { inputType: StreamType.Arbitrary });
+    connection.subscribe(globalPlayer);
+    globalPlayer.play(resource);
+}
 
 // --- 2. DANH SÁCH DỮ LIỆU GAME ---
 
