@@ -91,11 +91,21 @@ async function speak(guild, text) {
         const url = googleTTS.getAudioUrl(text.substring(0, 190), { 
             lang: 'vi', slow: false, host: 'https://translate.google.com' 
         });
-        const resource = createAudioResource(url, {
-            inputType: StreamType.Arbitrary,
-            inlineVolume: true,
-            behaviors: { noPlayerFreezing: true }
-        });
+        // Tìm hàm speak trong index.js và thay đoạn tạo resource bằng cái này:
+const resource = createAudioResource(url, {
+    inputType: StreamType.Arbitrary, // Ép kiểu để Linux dễ đọc
+    inlineVolume: true
+});
+
+if (resource.volume) resource.volume.setVolume(1.0); // Tăng max volume
+
+connection.subscribe(globalPlayer);
+globalPlayer.play(resource);
+
+// THÊM DÒNG NÀY ĐỂ DEBUG TRÊN KOYEB:
+globalPlayer.on('stateChange', (oldState, newState) => {
+    console.log(`AudioPlayer chuyển từ ${oldState.status} sang ${newState.status}`);
+});
         if (resource.volume) resource.volume.setVolume(0.8);
         connection.subscribe(globalPlayer);
         globalPlayer.play(resource);
