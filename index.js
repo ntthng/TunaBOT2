@@ -2,6 +2,14 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
+const sodium = require('libsodium-wrappers');
+
+// Đảm bảo sodium sẵn sàng trước khi Bot làm bất cứ việc gì liên quan đến Voice
+async function initializeVoice() {
+    await sodium.ready;
+    console.log("✅ Sodium (Mã hóa) đã sẵn sàng trên Koyeb!");
+}
+initializeVoice();
 const { 
     Client, GatewayIntentBits, Partials, ActionRowBuilder, 
     ButtonBuilder, ButtonStyle, ComponentType, EmbedBuilder, AttachmentBuilder 
@@ -380,21 +388,29 @@ async function speak(guild, text) {
     const connection = getVoiceConnection(guild.id);
     if (!connection) return;
 
-    const safeText = text.substring(0, 190);
-    const url = googleTTS.getAudioUrl(safeText, { lang: 'vi', slow: false, host: 'https://translate.google.com' });
-
-    // Dùng prism-media để ép luồng âm thanh chạy qua FFmpeg một cách rõ ràng
-    const resource = createAudioResource(url, {
-        inputType: StreamType.Arbitrary,
-        inlineVolume: true
+    const url = googleTTS.getAudioUrl(text.substring(0, 190), { 
+        lang: 'vi', 
+        slow: false, 
+        host: 'https://translate.google.com' 
     });
 
-    resource.volume.setVolume(0.9);
-    
-    // MẸO: Dừng cái cũ để cái mới bắt đầu ngay lập tức
-    globalPlayer.stop(); 
-    globalPlayer.play(resource);
-    connection.subscribe(globalPlayer);
+    const resource = createAudioResource(url, {
+        // Trên Linux, Arbitrary đôi khi kén FFmpeg, hãy thử ép kiểu hoặc dùng inlineVolume
+        inputType: StreamType.Arbitrary,
+        inlineVolume: true 
+    });
+
+    try {
+        resource.volume.setVolume(0.8);
+        
+        // Quan trọng: Phải stop player trước khi play cái mới trên Linux để tránh treo luồng
+        globalPlayer.stop(); 
+        globalPlayer.play(resource);
+        connection.subscribe(globalPlayer);
+        console.log(`🎤 Đang phát: ${text}`);
+    } catch (error) {
+        console.error("Lỗi âm thanh:", error);
+    }
 }
 
 function playLocalFile(guild, fileName) {
@@ -633,6 +649,7 @@ client.on('messageCreate', async (message) => {
     }
 
 
+    
     if (['tnoi', 'tn','Tn','Tnoi'].includes(command)) {
         // Lấy nội dung sau lệnh (bỏ qua tên lệnh tnoi hoặc tn)
         const content = message.content.split(' ').slice(1).join(' ').trim();
@@ -647,6 +664,12 @@ client.on('messageCreate', async (message) => {
         message.react('🗣️').catch(() => {}); 
     }
     
+    const { generateDependencyReport } = require('@discordjs/voice');
+
+if (command === 'tcheck') {
+    const report = generateDependencyReport();
+    message.reply(`\`\`\`\n${report}\n\`\`\``);
+}
 
     if (command === 'tdacvu') {
         const randomAgent = Agents[Math.floor(Math.random() * Agents.length)];
