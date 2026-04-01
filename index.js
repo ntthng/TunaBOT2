@@ -1,23 +1,16 @@
 require('dotenv').config();
-const express = require('express');
-const { Client, GatewayIntentBits } = require('discord.js');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, NoSubscriberBehavior, StreamType, getVoiceConnection } = require('@discordjs/voice');
-const googleTTS = require('google-tts-api');
-
 const ffmpeg = require('ffmpeg-static');
-const { createAudioResource, StreamType } = require('@discordjs/voice');
+// ÉP RAILWAY DÙNG FFMPEG ĐI KÈM TRONG NODE_MODULES
+process.env.FFMPEG_PATH = ffmpeg;
 
-// ÉP BOT DÙNG ĐƯỜNG DẪN NÀY (Đây là chìa khóa!)
-process.env.FFMPEG_PATH = ffmpeg; 
-
-function speak(guild, text) {
-    // ... code cũ ...
-    const resource = createAudioResource(url, {
-        inputType: StreamType.Arbitrary, // Thằng này sẽ tự gọi FFMPEG_PATH ở trên
-        inlineVolume: true
-    });
-    // ...
-}
+const express = require('express');
+const path = require('path');
+const { Client, GatewayIntentBits } = require('discord.js');
+const { 
+    joinVoiceChannel, createAudioPlayer, createAudioResource, 
+    NoSubscriberBehavior, StreamType, getVoiceConnection, AudioPlayerStatus 
+} = require('@discordjs/voice');
+const googleTTS = require('google-tts-api');
 
 const client = new Client({
     intents: [
@@ -28,12 +21,12 @@ const client = new Client({
     ]
 });
 
-// Khởi tạo Player duy nhất cho toàn Server
+// Khởi tạo Player duy nhất
 const player = createAudioPlayer({
     behaviors: { noSubscriber: NoSubscriberBehavior.Play }
 });
 
-// Hàm nói chuyện Google TTS
+// Hàm nói chuyện Google TTS (Xử lý lỗi FFmpeg triệt để)
 function speak(guild, text) {
     const connection = getVoiceConnection(guild.id);
     if (!connection) return;
@@ -42,10 +35,21 @@ function speak(guild, text) {
         const url = googleTTS.getAudioUrl(text.substring(0, 190), {
             lang: 'vi', slow: false, host: 'https://translate.google.com'
         });
-        const resource = createAudioResource(url, { inputType: StreamType.Arbitrary });
+
+        // Dùng Arbitrary để nó tự gọi FFmpeg giải mã
+        const resource = createAudioResource(url, { 
+            inputType: StreamType.Arbitrary,
+            inlineVolume: true 
+        });
+
+        if (resource.volume) resource.volume.setVolume(1.0);
+
         connection.subscribe(player);
         player.play(resource);
-    } catch (e) { console.error("Lỗi speak:", e); }
+        console.log(`🔊 Đang nói: ${text}`);
+    } catch (e) {
+        console.error("❌ Lỗi phát âm thanh:", e.message);
+    }
 }
 
 client.on('messageCreate', async (message) => {
@@ -57,15 +61,17 @@ client.on('messageCreate', async (message) => {
     // 1. Lệnh tjoin
     if (command === 'join') {
         const voiceChannel = message.member?.voice?.channel;
-        if (!voiceChannel) return message.reply('⚠️ Vào voice trước đã ông giáo!');
+        if (!voiceChannel) return message.reply('⚠️ Vào voice trước đi Tuan ơi!');
         
         joinVoiceChannel({
             channelId: voiceChannel.id,
             guildId: voiceChannel.guild.id,
             adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+            selfDeaf: false,
+            selfMute: false
         });
-        message.reply('✅ Đã vào phòng!');
-        speak(message.guild, "Chào cả nhà, tôi đã online");
+        message.reply('✅ Đã kết nối!');
+        setTimeout(() => speak(message.guild, "Chào cả nhà, tôi đã sẵn sàng"), 1000);
     }
 
     // 2. Lệnh tleave
@@ -74,23 +80,32 @@ client.on('messageCreate', async (message) => {
         if (connection) {
             speak(message.guild, "Tạm biệt nhé, tôi đi đây");
             setTimeout(() => connection.destroy(), 2000);
-            message.reply('👋 Tạm biệt!');
+            message.reply('👋 Cút đây!');
         }
     }
 
-    // 3. Lệnh tnoi (Ví dụ: tnoi hello tuan)
+    // 3. Lệnh tnoi (tnoi hello)
     if (command === 'noi' || command === 'n') {
         const content = args.join(' ');
-        if (!content) return message.reply('⚠️ Nói gì thì ghi ra chứ!');
+        if (!content) return message.reply('⚠️ Nói gì thì ghi ra!');
         speak(message.guild, content);
         message.react('✅');
     }
 });
 
-client.once('ready', () => console.log(`✅ Bot Online: ${client.user.tag}`));
+// Bắt lỗi sập Player (Giúp bot lì hơn)
+player.on('error', error => {
+    console.error('⚠️ Player Error:', error.message);
+});
+
+client.once('ready', () => {
+    console.log(`✅ [SUCCESS] Bot Online: ${client.user.tag}`);
+    console.log(`🛠 FFmpeg Path: ${process.env.FFMPEG_PATH}`);
+});
+
 client.login(process.env.DISCORD_TOKEN);
 
-// Giữ bot sống trên Railway
+// Server giữ bot sống
 const app = express();
-app.get('/', (req, res) => res.send('Bot is running!'));
+app.get('/', (req, res) => res.send('Bot is ready!'));
 app.listen(process.env.PORT || 8000);
